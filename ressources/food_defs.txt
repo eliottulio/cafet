@@ -1,0 +1,10 @@
+Kinder Bueno:100
+Kinder Country:50
+2 Country:100
+Country + Maxi:100
+2 Maxi:100
+Kinder Maxi:50
+Twix:100
+Snickers:100
+Lion:100
+Mars:100

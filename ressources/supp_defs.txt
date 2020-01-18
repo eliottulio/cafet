@@ -1,0 +1,3 @@
+Chantilly:20
+Caramel:10
+Chocolat:10

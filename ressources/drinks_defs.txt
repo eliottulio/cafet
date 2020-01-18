@@ -1,0 +1,14 @@
+Café Senseo
+Café Viennois
+Cappuccino Classique
+Cappuccino Vanille
+Cappuccino Milka
+Cappuccino Chocolat Blanc
+Latte macchiato:L
+Chocolat chaud
+Mocha:L
+Thé
+Coca-Cola:N
+Ice-Tea:N
+Oasis:N
+Caprisun:N
