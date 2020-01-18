@@ -1,0 +1,148 @@
+// Copyright © 2019, Amelia Coutard
+//
+// This file is part of Cafet.
+//
+// Cafet is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Cafet is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Cafet.  If not, see <https://www.gnu.org/licenses/>.
+
+#include <iostream>
+#include <cmath>
+#include <ctime>
+#include <fstream>
+#include <gtkmm/button.h>
+#include <gtkmm/label.h>
+#include <gtkmm/grid.h>
+#include "data_structures.hpp"
+#include "sell_drink.hpp"
+#include "window.hpp"
+
+Cafet::Sell_drink::Sell_drink(Cafet::Window& window) : m_window(window) {
+	set_border_width(10);
+
+	{
+		drink_selection = Gtk::Grid();
+
+		int height = int(std::sqrt(map_of_drinks.size()));
+		int width = int(double(map_of_drinks.size()) / height + 0.5);
+
+		std::size_t i = 0;
+		for (const auto& elem : map_of_drinks) {
+			std::size_t x = i % width;
+			std::size_t y = i / width;
+
+			Gtk::Button* button = Gtk::make_managed<Gtk::Button>(elem.first);
+			button->set_property("expand", true);
+			button->signal_clicked().connect(sigc::bind(sigc::mem_fun(*this, &Sell_drink::on_drink_button_clicked), elem.second));
+			drink_selection.attach(*button, x, y);
+			i++;
+		}
+		{
+			Gtk::Button* button = Gtk::make_managed<Gtk::Button>("Annuler");
+			button->set_property("expand", true);
+			button->signal_clicked().connect(sigc::mem_fun(*this, &Sell_drink::on_drink_cancel_button_clicked));
+			drink_selection.attach(*button, width - 1, height);
+		}
+	}
+
+	{
+		size_selection = Gtk::Grid();
+
+		int width = std::count_if(map_of_drink_sizes.begin(), map_of_drink_sizes.end(), [](const std::pair<const char, Cafet::Drink_size>& size){return !size.second.invisible;});
+
+		std::size_t i = 0;
+		for (const auto& elem : map_of_drink_sizes) {
+			std::size_t x = i;
+
+			if (!elem.second.invisible) {
+				Gtk::Button* button = Gtk::make_managed<Gtk::Button>(std::string() + elem.first);
+				button->set_property("expand", true);
+				button->signal_clicked().connect(sigc::bind(sigc::mem_fun(*this, &Sell_drink::on_size_button_clicked), elem.second));
+				size_selection.attach(*button, x, 0);
+				i++;
+			}
+		}
+		{
+			Gtk::Button* button = Gtk::make_managed<Gtk::Button>("Annuler");
+			button->set_property("expand", true);
+			button->signal_clicked().connect(sigc::mem_fun(*this, &Sell_drink::on_size_cancel_button_clicked));
+			size_selection.attach(*button, width - 1, 1);
+		}
+	}
+
+	{
+		confirmation = Gtk::Grid();
+
+		{
+			Gtk::Button* button = Gtk::make_managed<Gtk::Button>("Confirmer");
+			button->set_property("expand", true);
+			button->signal_clicked().connect(sigc::mem_fun(*this, &Sell_drink::on_confirm_confirm_button_clicked));
+			confirmation.attach(*button, 0, 0);
+		}
+		{
+			Gtk::Button* button = Gtk::make_managed<Gtk::Button>("Annuler");
+			button->set_property("expand", true);
+			button->signal_clicked().connect(sigc::mem_fun(*this, &Sell_drink::on_confirm_cancel_button_clicked));
+			confirmation.attach(*button, 1, 0);
+		}
+	}
+
+	add(drink_selection);
+	show_all_children();
+}
+
+
+Cafet::Sell_drink::~Sell_drink() {}
+
+void Cafet::Sell_drink::on_drink_button_clicked(const Cafet::Drink& drink) {
+	current_drink = drink.name;
+	std::cout << "Drink: " << drink.name << '\n';
+	if (drink.default_size) {
+		on_size_button_clicked(*drink.default_size);
+	} else {
+		remove();
+		add(size_selection);
+		show_all_children();
+	}
+}
+void Cafet::Sell_drink::on_drink_cancel_button_clicked() {
+	m_window.sell();
+}
+
+void Cafet::Sell_drink::on_size_button_clicked(const Cafet::Drink_size& drink_size) {
+	std::cout << "Size: " << drink_size.name << ':' << drink_size.price << '\n';
+	current_size = drink_size.name;
+	remove();
+	add(confirmation);
+	show_all_children();
+	using std::to_string;
+	((Gtk::Button*)confirmation.get_child_at(0, 0))->set_label("Confirm (" + *current_drink + ", " + drink_size.name + " ("
+																														+ to_string(drink_size.price / 100) + '.' + to_string(drink_size.price % 100) + "€))");
+}
+void Cafet::Sell_drink::on_size_cancel_button_clicked() {
+	remove();
+	add(drink_selection);
+	show_all_children();
+}
+
+void Cafet::Sell_drink::on_confirm_confirm_button_clicked() {
+	std::ofstream drinks_out("transactions/drinks.txt", std::fstream::ios_base::app);
+	std::size_t price = map_of_drink_sizes.at(*current_size).price;
+	drinks_out << std::time(0) << "; " << *current_drink << "; " << *current_size << "; " << price / 100 << '.' << price % 100 << '\n';
+	on_confirm_cancel_button_clicked();
+	m_window.home();
+}
+void Cafet::Sell_drink::on_confirm_cancel_button_clicked() {
+	remove();
+	add(drink_selection);
+	show_all_children();
+}
